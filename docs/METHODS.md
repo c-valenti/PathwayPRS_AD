@@ -157,3 +157,58 @@ See exact scripts and command-line parameters in
    For each SNP, the **weighted mapping factor** to a cluster was defined as:  
    *(# links to that cluster) ÷ (total # links across all clusters)*.  
    - **Output:** `data/interim/clusters/snp_weighted_mapping_noAPOE.csv`, providing per-SNP weights across all four clusters (used downstream for pathway-specific PRS).
+
+
+## 7. Pathway-PRS Calculation with PLINK
+_This section follows the cluster creation described in [Methods §6](METHODS.md#6-pathway-prs-cluster-creation)._
+
+This stage converts the weighted SNP–cluster mappings from §6 into global and cluster-specific polygenic risk scores (PRS) for each ADNI participant.
+See exact scripts and command-line parameters in [docs/PARAMETERS.md](PARAMETERS.md#7-pathway-prs-calculation-with-plink).
+
+### 7.1 Rationale and APOE Handling
+To capture polygenic effects beyond the strong APOE locus, we:
+- **Included** APOE SNPs in gene/pathway mapping and cluster construction (§6),
+  ensuring biologically accurate clusters.
+- **Excluded** APOE SNPs from PRS scoring, using the filtered
+  `snp_weighted_mapping_noAPOE.csv` to prevent single-locus dominance.
+
+### 7.2 Weighted PRS Score Files
+We merged the three-column PLINK score file from §5 (`global.score`, containing ADNI SNP ID, effect allele, and Final_Effect) with the cluster weights from §6 (`snp_weighted_mapping_noAPOE.csv`).
+
+- For each SNP and each cluster:
+\[\text{FinalEffectWeighted} = \text{FinalEffect} \times \text{WeightedFactor}\]
+
+**Outputs:**
+- `global_weighted.score` – global PRS (all SNPs weighted by their cluster factors)
+- `weighted_cluster1.score` ... `weighted_cluster4.score` – one file per cluster
+
+### 7.3 PLINK2 Scoring
+We ran PLINK2 `--score` to compute per-individual PRS values.
+For each cluster (1–4) the same command was repeated, substituting thecorresponding cluster-specific weighted_clusterX.score and output prefix.
+
+**Example (global PRS):**
+```bash
+plink2 \
+  --pfile data/raw/COHORT/merged_cohort.hg19 \
+  --score data/interim/scores/global_weighted.score 1 2 3 \
+  cols=+scoresums,+scoreavgs list-variants header \
+  --out data/processed/plink_scores/global_noAPOE
+  ```
+  
+**PLINK outputs** .sscore files containing:
+- SCORE1_SUM – sum of weighted allele dosages per individual 
+- SCORE1_AVG – mean weighted score per SNP
+
+
+### 7.4 Quality Control and Integration
+Using `scripts/60_qc_and_viz/ADNI_PLINK_input_output.R` we:
+- Removed duplicate individuals and scaled SCORE1_AVG to a 0–1 range
+- Combined global and cluster-specific PRS into one tidy dataset
+- Generated histograms and boxplots of PRS distributions for QC
+- Reported summary statistics (mean/SD per cluster, number of valid scores)
+
+Final cluster SNP counts (after APOE removal):
+- Cluster 1: 88 SNPs
+- Cluster 2: 55 SNPs
+- Cluster 3: 105 SNPs 
+- Cluster 4: 157 SNPs

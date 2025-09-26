@@ -87,6 +87,7 @@ plink2 \
 
 ## 6. Pathway-PRS Cluster Creation
 _See narrative in [Methods §6](METHODS.md#6-pathway-prs-cluster-creation)._
+The script internally evaluates 2–15 candidate clusters (cutreeDynamic) before fixing the final cluster count to k=4 as reported in Methods.
 
 This stage produces the SNP→cluster weights used to build pathway-specific PRS.  
 It consists of: (1) SNP→gene and GO enrichment, (2) GO similarity + clustering, (3) SNP→cluster weighting.
@@ -161,5 +162,69 @@ Rscript scripts/30_scores/build_plink_scores.R \
 
 These weighted score files are the direct inputs for PLINK2 --score in §5.1.
 
-
 ---
+
+## 7. Pathway-PRS Calculation with PLINK
+_See narrative in [Methods §7](METHODS.md#7-pathway-prs-calculation-with-plink)._
+
+This stage turns weighted SNP–cluster mappings into per-individual PRS values.
+
+### 7.1 Weighted Score File Creation
+Combine the three-column score file (`global.score`) with SNP–cluster weights:
+
+```bash
+Rscript scripts/30_scores/build_plink_scores.R \
+  --score   data/interim/scores/global.score \
+  --weights data/interim/clusters/snp_weighted_mapping_noAPOE.csv \
+  --out-prefix data/interim/scores/
+  ```
+
+**Outputs:**
+- `data/interim/scores/global_weighted.score`
+- `data/interim/scores/weighted_cluster1.score`
+- `data/interim/scores/weighted_cluster2.score`
+- `data/interim/scores/weighted_cluster3.score`
+- `data/interim/scores/weighted_cluster4.score`
+
+
+***FinalEffectWeighted*** is computed as:
+- **FinalEffectWeighted** = FinalEffect * WeightedFactor
+
+### 7.2 PLINK2 Scoring
+Compute PRS for global and cluster-specific scores.
+
+1. **Global PRS:**
+```bash
+plink2 \
+  --pfile data/raw/COHORT/merged_cohort.hg19 \
+  --score data/interim/scores/global_weighted.score 1 2 3 \
+  cols=+scoresums,+scoreavgs list-variants header \
+  --out data/processed/plink_scores/global_noAPOE
+```
+
+2. **Cluster-specific PRS** (repeat for each cluster):
+```bash
+plink2 \
+  --pfile data/raw/COHORT/merged_cohort.hg19 \
+  --score data/interim/scores/weighted_cluster{1..4}.score 1 2 3 \
+  cols=+scoresums,+scoreavgs list-variants header \
+  --out data/processed/plink_scores/cluster{1..4}_noAPOE
+```
+
+**Outputs:**
+- `data/processed/plink_scores/global_noAPOE.sscore`
+- `data/processed/plink_scores/cluster1_noAPOE.sscore … cluster4_noAPOE.sscore`
+
+### 7.3 QC and Visualisation
+Process `.sscore` outputs in R for QC and integration:
+
+```bash
+Rscript scripts/60_qc_and_viz/ADNI_PLINK_input_output.R \
+  --sscore data/processed/plink_scores/global_noAPOE.sscore \
+  --outdir data/processed/figures/
+  ```
+
+- Generates:
+1. Scaled histograms per cluster (e.g. hist_scaled_cluster1.png)
+2. Boxplots of SCORE1_AVG distributions
+3. Combined long-format PRS dataset for downstream analysis
