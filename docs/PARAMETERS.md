@@ -84,3 +84,82 @@ plink2 \
 ```
 
 ---
+
+## 6. Pathway-PRS Cluster Creation
+_See narrative in [Methods §6](METHODS.md#6-pathway-prs-cluster-creation)._
+
+This stage produces the SNP→cluster weights used to build pathway-specific PRS.  
+It consists of: (1) SNP→gene and GO enrichment, (2) GO similarity + clustering, (3) SNP→cluster weighting.
+
+---
+
+### 6.1 Gene-to-Pathway Mapping
+
+**Inputs**
+- `data/external/RESULTS_SnpXplorer/snp_annotation.txt` — SNP→gene mapping exported from SNPXplorer (GTEx Whole Blood)  
+- `data/external/gProfiler_intersections.csv` — gene–GO intersections from g:Profiler (FDR < 0.01)  
+- `data/external/go_terms_BP_all.txt` — list of significant GO BP terms (one per line)
+
+**Command (semantic similarity / REVIGO-style distance)**
+```bash
+python3 scripts/40_pathways/Alternative_REVIGO.py \
+  data/external/go_terms_BP_all.txt \
+  data/interim/clusters/revigo_lin_distance.txt
+```
+
+**Outputs**
+- `data/interim/clusters/revigo_lin_distance.txt` — Lin distance matrix among enriched GO terms
+
+
+### 6.2 Cluster Creation
+
+**Inputs**
+- `data/external/RESULTS_SnpXplorer/snp_annotation.txt`
+- `data/external/gProfiler_intersections.csv`
+- `data/interim/clusters/revigo_lin_distance.txt`
+
+
+**Command (hierarchical clustering + dynamic cut):**
+```bash
+Rscript scripts/40_pathways/ClusterCreation.R \
+  --snpx data/external/RESULTS_SnpXplorer/snp_annotation.txt \
+  --gprof data/external/gProfiler_intersections.csv \
+  --revigo data/interim/clusters/revigo_lin_distance.txt \
+  --p 0.01 \
+  --k 4 \
+  --out data/interim/clusters/snp_weighted_mapping_noAPOE.csv
+```
+**Outputs**
+-`data/interim/clusters/snp_weighted_mapping_noAPOE.csv` — per-SNP weights across the 4 clusters 
+
+**Notes**
+--p 0.01 enforces the g:Profiler significance threshold (FDR < 0.01).
+--k 4 fixes the final number of clusters to 4 after dynamic search (2–15) as in Methods.
+
+
+### 6.3 Wiring SNP–Cluster Weights into PRS
+These weights feed into the score-building step to produce weighted effect sizes per SNP.
+
+**Inputs**
+- `data/interim/scores/global.score` — base 3-column score file (SNP, A1, BETA) from §5
+- `data/interim/clusters/snp_weighted_mapping_noAPOE.csv` — SNP→cluster weights (this section)
+
+**Command (annotate scores with cluster weights):**
+```bash
+Rscript scripts/30_scores/build_plink_scores.R \
+  --score data/interim/scores/global.score \
+  --weights data/interim/clusters/snp_weighted_mapping_noAPOE.csv \
+  --out-prefix data/interim/scores/
+```
+
+**Outputs**
+- `data/interim/scores/global_weighted.score` — global PRS weighted across clusters
+- `data/interim/scores/weighted_cluster1.score`
+- `data/interim/scores/weighted_cluster2.score`
+- `data/interim/scores/weighted_cluster3.score`
+- `data/interim/scores/weighted_cluster4.score`
+
+These weighted score files are the direct inputs for PLINK2 --score in §5.1.
+
+
+---
