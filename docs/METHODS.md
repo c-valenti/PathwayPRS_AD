@@ -60,7 +60,7 @@ To harmonize GWAS summary statistics with ADNI genotypes we:
 Exact filtering parameters and full commands are provided in  
 [docs/PARAMETERS.md](PARAMETERS.md#4-snp-to-cohort-variant-matching).
 
-*** Scripts: ***
+***Scripts:***
 [extract_snps_from_vcf.sh](../scripts/20_match/extract_snps_from_vcf.sh),
 [match_dbsnp_with_cohort.sh](../scripts/20_match/match_dbsnp_with_cohort.sh).
 
