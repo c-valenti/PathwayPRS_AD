@@ -8,12 +8,6 @@ IDF = PM.get("clump_id_field", "MarkerName")
 PF  = PM.get("clump_p_field",  "P-value")
 SCORE_COLS = PM.get("plink_score_cols", "+scoresums,+scoreavgs")
 
-# Helper: ensure output dir exists
-def makedirs(path):
-    d = os.path.dirname(path)
-    if d:
-        os.makedirs(d, exist_ok=True)
-
 # ---- Default target: docs-only vs full run
 if F.get("docs_only", False):
     rule all:
@@ -24,16 +18,13 @@ if F.get("docs_only", False):
 else:
     rule all:
         input:
-            # global PRS result + a representative QC figure
             O["plink_out_dir"] + "global_noAPOE.sscore",
             O["figures_dir"] + "prs_histograms.png"
 
 # ---- 1) Clump
 rule clump:
-    input:
-        P["meta_sumstats_union"]
-    output:
-        O["clump_dir"] + "clumped.tsv"
+    input: P["meta_sumstats_union"]
+    output: O["clump_dir"] + "clumped.tsv"
     shell:
         r"""
         mkdir -p {O[clump_dir]}
@@ -70,8 +61,7 @@ rule build_scores:
     input:
         matched  = O["matched_dir"] + "matched.tsv",
         sumstats = P["meta_sumstats_union"]
-    output:
-        O["scores_dir"] + "global.score"
+    output: O["scores_dir"] + "global.score"
     shell:
         r"""
         mkdir -p {O[scores_dir]}
@@ -81,13 +71,11 @@ rule build_scores:
         """
 
 # ---- 4) Pathway clustering and SNP weights
-# NOTE: output name has no "_4clust" suffix now
 rule clusters:
     input:
         snpx  = P["snpxplorer_annotations"],
         gprof = P["gprofiler_intersections"]
-    output:
-        O["clusters_dir"] + "snp_weighted_mapping_noAPOE.csv"
+    output: O["clusters_dir"] + "snp_weighted_mapping_noAPOE.csv"
     shell:
         r"""
         mkdir -p {O[clusters_dir]}
@@ -101,7 +89,6 @@ rule clusters:
         """
 
 # ---- 5) Annotate score file with cluster weights
-# Produce global_weighted + weighted_cluster1..4
 rule annotate_scores_with_clusters:
     input:
         score   = O["scores_dir"] + "global.score",
@@ -126,8 +113,7 @@ rule plink_score_global:
     input:
         score = O["scores_dir"] + "global_weighted.score",
         pfile_prefix = P["cohort_pfile_prefix"]
-    output:
-        O["plink_out_dir"] + "global_noAPOE.sscore"
+    output: O["plink_out_dir"] + "global_noAPOE.sscore"
     shell:
         r"""
         mkdir -p {O[plink_out_dir]}
@@ -136,17 +122,13 @@ rule plink_score_global:
           --out {O[plink_out_dir]}global_noAPOE
         """
 
-# (Optional) 6b) PLINK scoring (clusters). Uncomment 'cluster_targets' in rule all if you want them as required.
+# ---- 6b) PLINK scoring (clusters) — optional fanout, e.g. with: snakemake -j 4 cluster_sscores
 rule plink_score_cluster:
     input:
         pfile_prefix = P["cohort_pfile_prefix"],
-        score = lambda wildcards: O["scores_dir"] + f"weighted_cluster{wildcards.c}.score"
+        score = O["scores_dir"] + "weighted_cluster{c}.score"
     output:
-        lambda wildcards: O["plink_out_dir"] + f"cluster{wildcards.c}_noAPOE.sscore"
-    params:
-        c = lambda wildcards: wildcards.c
-    wildcards:
-        c = "{c}"
+        out = O["plink_out_dir"] + "cluster{c}_noAPOE.sscore"
     shell:
         r"""
         mkdir -p {O[plink_out_dir]}
@@ -157,10 +139,8 @@ rule plink_score_cluster:
 
 # ---- 7) QC & visualisation
 rule qc_and_viz:
-    input:
-        O["plink_out_dir"] + "global_noAPOE.sscore"
-    output:
-        O["figures_dir"] + "prs_histograms.png"
+    input: O["plink_out_dir"] + "global_noAPOE.sscore"
+    output: O["figures_dir"] + "prs_histograms.png"
     shell:
         r"""
         mkdir -p {O[figures_dir]}

@@ -60,4 +60,4 @@ tools:
 flags:
   exclude_apoe_in_prs: true
   include_apoe_in_mapping: true
-  docs_only: false
+  docs_only: true

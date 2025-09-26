@@ -1,0 +1,5 @@
+RSID	ADNI_VARIANT_ID	REF	ALT	CHR	POS
+rs429358	19:45411941:T:C	T	C	19	45411941
+
+
+# EXAMPLE DATA ONLY – illustrates expected columns, not real genotype data
