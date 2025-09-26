@@ -50,13 +50,15 @@ are provided in: [docs/PARAMETERS.md](PARAMETERS.md#3-clumping-of-independent-ge
 ---
 
 ## 4. SNP-to-Cohort Variant Matching
-
 To harmonize GWAS summary statistics with ADNI genotypes we:
 
 - Downloaded dbSNP b151 (GRCh37) common SNP VCF  
   [`common_all_20180423.vcf.gz`](https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/common_all_20180423.vcf.gz).
 - Used `extract_snps_from_vcf.sh` to filter to the genome-wide significant variants, removing rare SNPs (MAF < 0.01).
 - Used `match_dbsnp_with_adni.sh` to match dbSNP rsIDs to ADNI `chr:pos:ref:alt` variant IDs, automatically resolving strand flips and multi-allelic sites.
+
+Scripts: [extract_snps_from_vcf.sh](../scripts/20_match/extract_snps_from_vcf.sh),
+[match_dbsnp_with_cohort.sh](../scripts/20_match/match_dbsnp_with_cohort.sh).
 
 Exact filtering parameters and full commands are provided in  
 [docs/PARAMETERS.md](PARAMETERS.md#4-snp-to-cohort-variant-matching).
@@ -72,9 +74,6 @@ We built per-subject PRS inputs as follows:
 - Created a PLINK `--score` file with three columns  
   `ADNI_VARIANT_ID   RISK_ALLELE   FINAL_EFFECT`.
 
-These score files form the input to PLINK2 for computing global and cluster-specific PRS.
+R script: [get_score.R](../scripts/30_scores/get_score.R).
 
-Exact R logic (allele matching, risk-allele determination, weighted cluster scores)  
-and PLINK2 scoring commands are listed in: [docs/PARAMETERS.md](PARAMETERS.md#5-construction-of-plink-score-files).
-
-
+These score files form the input to PLINK2 for computing global and cluster-specific PRS. Exact R logic (allele matching, risk-allele determination, weighted cluster scores) and PLINK2 scoring commands are listed in: [docs/PARAMETERS.md](PARAMETERS.md#5-construction-of-plink-score-files).

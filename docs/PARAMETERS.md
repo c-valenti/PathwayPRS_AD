@@ -32,3 +32,15 @@ bash scripts/20_match/extract_snps_from_vcf.sh \
     extracted_snps.vcf
 ```
 
+## 5. Construction of PLINK Score Files
+
+See narrative in [Methods §5](METHODS.md#5-construction-of-plink-score-files).
+
+Generate the three-column PLINK score file used for PRS calculation:
+
+```bash
+Rscript scripts/30_scores/get_score.R \
+    --matched data/interim/matched/matched.tsv \
+    --sumstats data/raw/meta-GWAS-Wightman-Bellenguez-raw.tbl \
+    --out data/interim/scores/global.score \
+    --exclude-apoe true
