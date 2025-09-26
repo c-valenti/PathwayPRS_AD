@@ -158,6 +158,7 @@ See exact scripts and command-line parameters in
    *(# links to that cluster) ÷ (total # links across all clusters)*.  
    - **Output:** `data/interim/clusters/snp_weighted_mapping_noAPOE.csv`, providing per-SNP weights across all four clusters (used downstream for pathway-specific PRS).
 
+---
 
 ## 7. Pathway-PRS Calculation with PLINK
 _This section follows the cluster creation described in [Methods §6](METHODS.md#6-pathway-prs-cluster-creation)._
