@@ -4,6 +4,8 @@ This repository provides **all scripts, workflow logic, and parameter settings**
 the analysis on properly licensed datasets such as ADNI and A4.  
 It contains **no real genetic data**.
 
+See exact command and thresholds in [Parameters §3 PLINK clumping](PARAMETERS.md#3-plink-clumping).
+
 ---
 
 ## 1. Genotyping and Quality Control

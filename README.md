@@ -1,4 +1,4 @@
-# Pathway-specific PRS (APOE-excluded scoring; union meta-GWAS)
+### Pathway-specific PRS (APOE-excluded scoring; union meta-GWAS)
 
 Reproducible pipeline to:
 - meta-analyze (union) Wightman + Bellenguez sumstats,
@@ -10,3 +10,10 @@ Reproducible pipeline to:
 
 Start: edit config/config.yaml and drop required inputs into data/raw and data/external.  
 Run: `make run` (uses Snakemake).
+
+# Quick links
+- [Methods (narrative)](docs/METHODS.md)
+- [Parameters & commands](docs/PARAMETERS.md)
+- [Data formats (schemas only)](docs/DATA_FORMATS.md)
+
+

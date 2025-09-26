@@ -2,6 +2,8 @@ See the overall narrative in [docs/METHODS.md](METHODS.md#3-clumping-of-independ
 
 ### 3. PLINK Clumping
 
+See narrative in [Methods §3](METHODS.md#3-clumping-of-independent-genome-wide-significant-variants)._
+
 Independent SNPs were extracted with **PLINK 2** clumping
 ([documentation](https://zzz.bwh.harvard.edu/plink/clump.shtml)):
 
@@ -16,6 +18,8 @@ plink2 --bfile 1KG_EUR \
 ```
 Reference panel: 1000 Genomes Phase 3 EUR
 Expected output: ~320 independent genome-wide significant SNPs
+
+
 
 ### 4. SNP-to-Cohort Variant Matching
 
