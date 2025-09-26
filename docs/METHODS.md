@@ -102,53 +102,58 @@ It consists of three sub-steps: (i) SNP->gene mapping and GO enrichment, (ii) cl
 See exact scripts and command-line parameters in
 [docs/PARAMETERS.md](PARAMETERS.md#6-pathway-prs-cluster-creation).
 
+This module identifies biologically meaningful pathway clusters from genome-wide significant SNPs and computes weighted SNP-to-cluster assignments for pathway-specific PRS. It consists of three sub-steps: (i) SNP→gene mapping and GO enrichment, (ii) clustering of enriched pathways, and (iii) weighted mapping of SNPs to pathway clusters.
+
+See exact scripts and command-line parameters in
+[docs/PARAMETERS.md](PARAMETERS.md#6-pathway-prs-cluster-creation).
+
+
 ### 6.1 Gene-to-Pathway Mapping
 
-1. SNP -> gene annotation
-We used the Gene-set Enrichment Analysis function in SNPXplorer with tissue context GTEx – Whole Blood.
-- Input: ≈291 independent significant SNPs (after PLINK clumping).
-- Output: a SNP–gene annotation table (data/external/RESULTS_SnpXplorer/snp_annotation.txt).
+1. **SNP→gene annotation**  
+   We used the *Gene-set Enrichment Analysis* function in **SNPXplorer** (GTEx: **Whole Blood**).  
+   - **Input:** ~291 independent significant SNPs (post-PLINK clumping).  
+   - **Output:** SNP–gene annotation table: `data/external/RESULTS_SnpXplorer/snp_annotation.txt`.
 
-2. GO functional enrichment
-Genes mapped by SNPXplorer were tested for Gene Ontology (GO) Biological Process enrichment using g:Profiler (Raudvere et al., 2019).
-- Only pathways with FDR-adjusted p < 0.01 were retained.
-- Output: gene–GO intersections (data/external/gProfiler_intersections.csv).
+2. **GO functional enrichment**  
+   Genes mapped by SNPXplorer were tested for GO Biological Process enrichment using **g:Profiler** (Raudvere et al., 2019).  
+   - **Threshold:** FDR-adjusted *p* < 0.01 (retained terms only).  
+   - **Output:** gene–GO intersections: `data/external/gProfiler_intersections.csv`.
 
-3. Preparation for similarity analysis
-Significant GO terms were exported as go_terms_BP_all.txt for downstream semantic similarity calculations.
+3. **Preparation for similarity analysis**  
+   Significant GO BP terms were exported for semantic similarity computation as:  
+   `data/external/go_terms_BP_all.txt`.
+
 
 ### 6.2 Similarity Matrix and Cluster Creation
-To identify biologically coherent pathway groups:
 
-1. REVIGO-style similarity matrix
-We used a customised version of the approach in Tesi et al. (2021) implemented in scripts/40_pathways/Alternative_REVIGO.py.
-- This script computes Lin semantic similarity (Lin et al., 1998) among enriched GO terms and outputs a distance matrix (revigo_lin_distance.txt).
+1. **REVIGO-style similarity matrix**  
+   We implemented a customised version of the Tesi et al. (2021) approach in  
+   `scripts/40_pathways/Alternative_REVIGO.py`, which computes **Lin** semantic similarity (Lin, 1998) among enriched GO terms and writes a distance matrix:  
+   `data/interim/clusters/revigo_lin_distance.txt`.
 
-2. **Hierarchical clustering**
-The distance matrix was clustered in R (scripts/40_pathways/ClusterCreation.R) using Ward.D2 linkage and the cutreeDynamic algorithm (2–15 candidate clusters).
-- This yielded four stable clusters representing major biological themes: **1)** Immune activation, **2)**  Leukocyte regulation, **3)** Amyloid processing and **4)** Stimulus transduction
+2. **Hierarchical clustering**  
+   The distance matrix was clustered in R (`scripts/40_pathways/ClusterCreation.R`) using **Ward.D2** linkage and **cutreeDynamic** (searching 2–15 clusters).  
+   - **Result:** four stable clusters representing major biological themes:  
+     1) Immune activation, 2) Leukocyte regulation, 3) Amyloid processing, 4) Stimulus transduction.
 
-3. **Visualization**
-Cluster dendrograms and cluster-specific word clouds were generated to highlight key GO terms and their relationships.
-- Background terms were filtered (≥5 % frequency) and tokenised with tidytext to enhance interpretability.
+3. **Visualisation**  
+   Cluster dendrograms and cluster-specific word clouds were generated to highlight key GO terms and their relationships. Background tokens (≥5% frequency) were filtered; tokenisation used `tidytext`.
+
 
 ### 6.3 Weighted Mapping of SNPs to GO Clusters
-To link SNPs quantitatively to pathway clusters:
 
-1. **Filtering and QC** 
-- Removed APOE locus variants (rs429358, rs7412) to prevent single-locus dominance.
-- Removed SNPs mapping exclusively to the IGH locus to avoid spurious immune enrichment.
-- Retained 254 SNPs (212 genes) after filtering.
+1. **Filtering and QC**  
+   - Removed **APOE** locus variants (rs429358, rs7412) to prevent single-locus dominance.  
+   - Removed SNPs mapping exclusively to the **IGH** locus to avoid spurious immune enrichment.  
+   - **Retained:** 254 SNPs (212 genes).
 
-2. **Merging SNP–gene–pathway relationships**
-- The cleaned SNP–gene table was intersected with significant gene–GO associations from Gprofiler.
-- Two aggregated views were generated: **1)** ***snp2gene2pathway_01.csv*** (SNP->gene->cluster) and **2)** ***pathway2gene2snp_01_4clust.csv*** (cluster->gene->SNP)
+2. **Merging SNP–gene–pathway relationships**  
+   The cleaned SNP–gene table was intersected with significant gene–GO associations (g:Profiler *q* < 0.01). Two aggregated views were produced:  
+   - `data/interim/clusters/snp2gene2pathway_01.csv` (SNP → gene → cluster)  
+   - `data/interim/clusters/pathway2gene2snp_01.csv` (cluster → gene → SNP)
 
-3. **Computing SNP–cluster weights**
-For each SNP, a weighted mapping factor was calculated as: (#links to a given cluster) ÷ (total #links across all clusters).
-
-- The resulting file ***snp_weighted_mapping_noAPOE_.csv*** lists all SNPs with weights across the four clusters and serves as input for pathway-specific PRS computation.
-
----
-All scripts (Alternative_REVIGO.py, ClusterCreation.R) and parameter settings for these steps are listed with runnable examples in
-docs/PARAMETERS.md
+3. **Computing SNP–cluster weights**  
+   For each SNP, the **weighted mapping factor** to a cluster was defined as:  
+   *(# links to that cluster) ÷ (total # links across all clusters)*.  
+   - **Output:** `data/interim/clusters/snp_weighted_mapping_noAPOE.csv`, providing per-SNP weights across all four clusters (used downstream for pathway-specific PRS).
