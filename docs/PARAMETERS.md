@@ -1,6 +1,8 @@
+# Parameters for Pathway-Specific Polygenic Risk Score (Pathway-PRS) Analysis
+
 See the overall narrative in [docs/METHODS.md](METHODS.md#3-clumping-of-independent-genome-wide-significant-variants).
 
-### 3. PLINK Clumping
+## 3. PLINK Clumping
 
 See narrative in [Methods §3](METHODS.md#3-clumping-of-independent-genome-wide-significant-variants)._
 
@@ -19,9 +21,7 @@ plink2 --bfile 1KG_EUR \
 Reference panel: 1000 Genomes Phase 3 EUR
 Expected output: ~320 independent genome-wide significant SNPs
 
-
-
-### 4. SNP-to-Cohort Variant Matching
+## 4. SNP-to-Cohort Variant Matching
 
 Filter dbSNP to genome-wide significant variants:
 
