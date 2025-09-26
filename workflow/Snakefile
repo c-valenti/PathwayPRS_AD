@@ -1,6 +1,18 @@
-import yaml
+import yaml, os
+
 cfg = yaml.safe_load(open("config/config.yaml"))
 P, O, T, PM, F = cfg["paths"], cfg["out"], cfg["tools"], cfg["params"], cfg["flags"]
+
+# Convenience vars (with safe defaults if keys are missing)
+IDF = PM.get("clump_id_field", "MarkerName")
+PF  = PM.get("clump_p_field",  "P-value")
+SCORE_COLS = PM.get("plink_score_cols", "+scoresums,+scoreavgs")
+
+# Helper: ensure output dir exists
+def makedirs(path):
+    d = os.path.dirname(path)
+    if d:
+        os.makedirs(d, exist_ok=True)
 
 # ---- Default target: docs-only vs full run
 if F.get("docs_only", False):
@@ -12,19 +24,23 @@ if F.get("docs_only", False):
 else:
     rule all:
         input:
+            # global PRS result + a representative QC figure
             O["plink_out_dir"] + "global_noAPOE.sscore",
             O["figures_dir"] + "prs_histograms.png"
 
 # ---- 1) Clump
 rule clump:
-    input: P["meta_sumstats_union"]
-    output: O["clump_dir"] + "clumped.tsv"
+    input:
+        P["meta_sumstats_union"]
+    output:
+        O["clump_dir"] + "clumped.tsv"
     shell:
-        """
+        r"""
+        mkdir -p {O[clump_dir]}
         {T[plink2]} --bfile {P[thousand_genomes_eur_plink_prefix]} \
           --clump {input} \
           --clump-p1 {PM[clump_p1]} --clump-r2 {PM[clump_r2]} --clump-kb {PM[clump_kb]} \
-          --clump-id-field MarkerName --clump-p-field P-value \
+          --clump-id-field {IDF} --clump-p-field {PF} \
           --out {O[clump_dir]}clumped
         mv {O[clump_dir]}clumped.clumped {output}
         """
@@ -36,10 +52,11 @@ rule match_to_cohort:
         dbsnp   = P["dbsnp_b151_vcf_gz"],
         pvar    = P["cohort_pfile_prefix"] + ".pvar"
     output:
-        matched = O["matched_dir"] + "matched.tsv",
+        matched   = O["matched_dir"] + "matched.tsv",
         extracted = temp(O["matched_dir"] + "extracted.vcf")
     shell:
-        """
+        r"""
+        mkdir -p {O[matched_dir]}
         # extract SNPs from dbSNP using the clump rsIDs
         bash scripts/20_match/extract_snps_from_vcf.sh \
             {input.clumped} {input.dbsnp} {output.extracted}
@@ -51,24 +68,29 @@ rule match_to_cohort:
 # ---- 3) Build base score file (3 cols) from matched + sumstats
 rule build_scores:
     input:
-        matched = O["matched_dir"] + "matched.tsv",
+        matched  = O["matched_dir"] + "matched.tsv",
         sumstats = P["meta_sumstats_union"]
-    output: O["scores_dir"] + "global.score"
+    output:
+        O["scores_dir"] + "global.score"
     shell:
-        """
+        r"""
+        mkdir -p {O[scores_dir]}
         {T[rscript]} scripts/30_scores/get_score.R \
           --matched {input.matched} --sumstats {input.sumstats} --out {output} \
           --exclude-apoe {F[exclude_apoe_in_prs]}
         """
 
 # ---- 4) Pathway clustering and SNP weights
+# NOTE: output name has no "_4clust" suffix now
 rule clusters:
     input:
         snpx  = P["snpxplorer_annotations"],
         gprof = P["gprofiler_intersections"]
-    output: O["clusters_dir"] + "snp_weighted_mapping_noAPOE_4clust.csv"
+    output:
+        O["clusters_dir"] + "snp_weighted_mapping_noAPOE.csv"
     shell:
-        """
+        r"""
+        mkdir -p {O[clusters_dir]}
         {T[python]} scripts/40_pathways/Alternative_REVIGO.py \
             {P[go_terms_bp_all]} {O[clusters_dir]}revigo_lin_distance.txt
         {T[rscript]} scripts/40_pathways/ClusterCreation.R \
@@ -79,37 +101,69 @@ rule clusters:
         """
 
 # ---- 5) Annotate score file with cluster weights
+# Produce global_weighted + weighted_cluster1..4
 rule annotate_scores_with_clusters:
     input:
         score   = O["scores_dir"] + "global.score",
-        weights = O["clusters_dir"] + "snp_weighted_mapping_noAPOE_4clust.csv"
-    output: O["scores_dir"] + "weighted_4clust.score"
+        weights = O["clusters_dir"] + "snp_weighted_mapping_noAPOE.csv"
+    output:
+        global_weighted = O["scores_dir"] + "global_weighted.score",
+        cluster1 = O["scores_dir"] + "weighted_cluster1.score",
+        cluster2 = O["scores_dir"] + "weighted_cluster2.score",
+        cluster3 = O["scores_dir"] + "weighted_cluster3.score",
+        cluster4 = O["scores_dir"] + "weighted_cluster4.score"
     shell:
-        """
+        r"""
+        mkdir -p {O[scores_dir]}
         {T[rscript]} scripts/30_scores/build_plink_scores.R \
-            --score {input.score} --weights {input.weights} --out {output}
+          --score {input.score} \
+          --weights {input.weights} \
+          --out-prefix {O[scores_dir]}
         """
 
 # ---- 6) PLINK scoring (global)
 rule plink_score_global:
     input:
-        score = O["scores_dir"] + "weighted_4clust.score",
+        score = O["scores_dir"] + "global_weighted.score",
         pfile_prefix = P["cohort_pfile_prefix"]
-    output: O["plink_out_dir"] + "global_noAPOE.sscore"
+    output:
+        O["plink_out_dir"] + "global_noAPOE.sscore"
     shell:
-        """
+        r"""
+        mkdir -p {O[plink_out_dir]}
         {T[plink2]} --pfile {input.pfile_prefix} \
-          --score {input.score} 1 2 3 cols=+scoresums,+scoreavgs list-variants header \
+          --score {input.score} 1 2 3 cols={SCORE_COLS} list-variants header \
           --out {O[plink_out_dir]}global_noAPOE
+        """
+
+# (Optional) 6b) PLINK scoring (clusters). Uncomment 'cluster_targets' in rule all if you want them as required.
+rule plink_score_cluster:
+    input:
+        pfile_prefix = P["cohort_pfile_prefix"],
+        score = lambda wildcards: O["scores_dir"] + f"weighted_cluster{wildcards.c}.score"
+    output:
+        lambda wildcards: O["plink_out_dir"] + f"cluster{wildcards.c}_noAPOE.sscore"
+    params:
+        c = lambda wildcards: wildcards.c
+    wildcards:
+        c = "{c}"
+    shell:
+        r"""
+        mkdir -p {O[plink_out_dir]}
+        {T[plink2]} --pfile {input.pfile_prefix} \
+          --score {input.score} 1 2 3 cols={SCORE_COLS} list-variants header \
+          --out {O[plink_out_dir]}cluster{wildcards.c}_noAPOE
         """
 
 # ---- 7) QC & visualisation
 rule qc_and_viz:
-    input: O["plink_out_dir"] + "global_noAPOE.sscore"
-    output: O["figures_dir"] + "prs_histograms.png"
+    input:
+        O["plink_out_dir"] + "global_noAPOE.sscore"
+    output:
+        O["figures_dir"] + "prs_histograms.png"
     shell:
-        """
+        r"""
+        mkdir -p {O[figures_dir]}
         {T[rscript]} scripts/60_qc_and_viz/ADNI_PLINK_input_output.R \
           --sscore {input} --outdir {O[figures_dir]}
         """
-

@@ -1,38 +1,64 @@
 paths:
-  meta_sumstats_union: data/raw/meta-GWAS-Wightman-Bellenguez-raw.tbl
-  meta_sumstats_overlap: data/raw/meta-GWightman-Bellenguez.tbl
+  # Summary statistics
+  meta_sumstats_union:   data/raw/meta-GWAS-Wightman-Bellenguez-raw.tbl
+  meta_sumstats_overlap: data/raw/meta-GWAS-Wightman-Bellenguez.tbl  # fixed typo
+
+  # References / cohort inputs
   thousand_genomes_eur_plink_prefix: data/raw/1KG_EUR
-  dbsnp_b151_vcf_gz: data/raw/common_all_20180423.vcf.gz
-  cohort_pfile_prefix: data/raw/COHORT/merged_cohort.hg19
-  snpxplorer_annotations: data/external/RESULTS_SnpXplorer/snp_annotation.txt
+  dbsnp_b151_vcf_gz:                 data/raw/common_all_20180423.vcf.gz
+  cohort_pfile_prefix:               data/raw/COHORT/merged_cohort.hg19
+
+  # External annotations
+  snpxplorer_annotations:  data/external/RESULTS_SnpXplorer/snp_annotation.txt
   gprofiler_intersections: data/external/gProfiler_intersections.csv
-  go_terms_bp_all: data/external/go_terms_BP_all.txt
+  go_terms_bp_all:         data/external/go_terms_BP_all.txt
+
 out:
-  clump_dir: data/interim/clump/
-  matched_dir: data/interim/matched/
-  scores_dir: data/interim/scores/
-  clusters_dir: data/interim/clusters/
+  clump_dir:     data/interim/clump/
+  matched_dir:   data/interim/matched/
+  scores_dir:    data/interim/scores/
+  clusters_dir:  data/interim/clusters/
   plink_out_dir: data/processed/plink_scores/
-  figures_dir: data/processed/figures/
-  logs_dir: data/processed/logs/
+  figures_dir:   data/processed/figures/
+  logs_dir:      data/processed/logs/
+
 params:
+  # PLINK clumping
   clump_p1: 5e-8
   clump_r2: 0.1
   clump_kb: 250
-  maf_min: 0.01
-  imputation_r2_min: 0.5
-  allele_freq_diff_max: 0.2
-  palindromic_maf_max: 0.4
+  clump_id_field: MarkerName
+  clump_p_field:  P-value
+
+  # QC thresholds (pre/post imputation & matching)
+  maf_min:                 0.01
+  imputation_r2_min:       0.5
+  allele_freq_diff_max:    0.2
+  palindromic_maf_max:     0.4
+
+  # GO / clustering
   go_p_adj_threshold_strict: 0.01
   dynamic_tree_min_clusters: 2
   dynamic_tree_max_clusters: 15
-  n_clusters_final: 4
+  n_clusters_final:          4
+  cluster_labels: ["Immune activation","Leukocyte regulation","Amyloid processing","Stimulus transduction"]
+
+  # Scoring
+  plink_score_cols: "+scoresums,+scoreavgs"
+
+metadata:
+  genome_build: GRCh37
+  snpxplorer_tissue: GTEx_Whole_Blood
+  apoe_rsids: ["rs429358","rs7412"]
+
 tools:
-  plink2: plink2
-  metal: METAL
-  python: python3
+  plink2:  plink2
+  metal:   METAL
+  python:  python3
   rscript: Rscript
+  bcftools: bcftools   # optional; extractor uses if available
+
 flags:
-  exclude_apoe_in_prs: true
+  exclude_apoe_in_prs:   true
   include_apoe_in_mapping: true
-  docs_only: false
+  docs_only:             false
