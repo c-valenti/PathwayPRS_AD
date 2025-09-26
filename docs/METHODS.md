@@ -57,11 +57,15 @@ To harmonize GWAS summary statistics with ADNI genotypes we:
 - Used `extract_snps_from_vcf.sh` to filter to the genome-wide significant variants, removing rare SNPs (MAF < 0.01).
 - Used `match_dbsnp_with_adni.sh` to match dbSNP rsIDs to ADNI `chr:pos:ref:alt` variant IDs, automatically resolving strand flips and multi-allelic sites.
 
-Scripts: [extract_snps_from_vcf.sh](../scripts/20_match/extract_snps_from_vcf.sh),
-[match_dbsnp_with_cohort.sh](../scripts/20_match/match_dbsnp_with_cohort.sh).
-
 Exact filtering parameters and full commands are provided in  
 [docs/PARAMETERS.md](PARAMETERS.md#4-snp-to-cohort-variant-matching).
+
+*** Scripts: ***
+[extract_snps_from_vcf.sh](../scripts/20_match/extract_snps_from_vcf.sh),
+[match_dbsnp_with_cohort.sh](../scripts/20_match/match_dbsnp_with_cohort.sh).
+
+The first script produces a compact VCF (`extracted_snps.vcf`) containing only meta-GWAS significant SNPs present in dbSNP.  
+The second script produces a tab-separated table (`matched.tsv`) mapping each GWAS rsID to the corresponding ADNI `chr:pos:ref:alt` identifier, including reference and alternate alleles and genomic position.
 
 ---
 
@@ -74,6 +78,16 @@ We built per-subject PRS inputs as follows:
 - Created a PLINK `--score` file with three columns  
   `ADNI_VARIANT_ID   RISK_ALLELE   FINAL_EFFECT`.
 
-R script: [get_score.R](../scripts/30_scores/get_score.R).
+***R script:*** [get_score.R](../scripts/30_scores/get_score.R).
 
 These score files form the input to PLINK2 for computing global and cluster-specific PRS. Exact R logic (allele matching, risk-allele determination, weighted cluster scores) and PLINK2 scoring commands are listed in: [docs/PARAMETERS.md](PARAMETERS.md#5-construction-of-plink-score-files).
+
+### 5.1 PRS Computation (Global and Cluster-specific)
+
+Using the cleaned and weighted score files, we computed polygenic risk scores (PRS)
+for each ADNI participant with PLINK2.  
+Both a **global** PRS and **four pathway-specific cluster PRS** were calculated by
+running `plink2 --score` once per score file.
+
+All commands and parameter settings (e.g., `cols=+scoresums,+scoreavgs`)
+are detailed in [docs/PARAMETERS.md](PARAMETERS.md#51-plink-score-calculation-global-and-cluster-specific).
