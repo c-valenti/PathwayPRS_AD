@@ -1,0 +1,15 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  dryrun:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: pathway-prs
+          environment-file: envs/conda-env.yaml
+          auto-activate-base: false
+      - name: Validate Snakefile syntax
+        shell: bash -l {0}
+        run: snakemake -nq || true

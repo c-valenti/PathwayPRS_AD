@@ -1,0 +1,21 @@
+name: pathway-prs
+channels: [conda-forge, bioconda, defaults]
+dependencies:
+  - python=3.11
+  - snakemake-minimal>=8.0
+  - pandas
+  - numpy
+  - r-base>=4.3
+  - r-tidyverse
+  - r-data.table
+  - r-janitor
+  - r-tidytext
+  - r-wordcloud2
+  - r-dendextend
+  - r-dynamicTreeCut
+  - r-ggplot2
+  - r-cowplot
+  - r-glue
+  - r-optparse
+  - plink2
+  - unzip

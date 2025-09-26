@@ -1,2 +1,12 @@
-# PathwayPRS_AD
-Pathway-specific polygenic risk score (PRS) analyses for Alzheimer’s disease, integrating GWAS-based SNP selection with ADNI and A4 imaging cohorts. Focused on the interaction between genetic risk, amyloid chronicity, and tau progression across Braak regions.
+# Pathway-specific PRS (APOE-excluded scoring; union meta-GWAS)
+
+Reproducible pipeline to:
+- meta-analyze (union) Wightman + Bellenguez sumstats,
+- clump to independent SNPs,
+- match rsID ↔ chr:pos:ref:alt,
+- SNP→gene (SNPXplorer) & GO enrichment (g:Profiler),
+- REVIGO similarity + dynamic clustering (k=4),
+- PLINK2 scoring (global + clusters), APOE excluded from scoring.
+
+Start: edit config/config.yaml and drop required inputs into data/raw and data/external.  
+Run: `make run` (uses Snakemake).

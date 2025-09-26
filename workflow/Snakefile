@@ -1,0 +1,93 @@
+import yaml
+cfg = yaml.safe_load(open("config/config.yaml"))
+P, O, T, PM, F = cfg["paths"], cfg["out"], cfg["tools"], cfg["params"], cfg["flags"]
+
+rule all:
+    input:
+        O["plink_out_dir"] + "global_noAPOE.sscore",
+        O["figures_dir"] + "prs_histograms.png"
+
+rule clump:
+    input: P["meta_sumstats_union"]
+    output: O["clump_dir"] + "clumped.tsv"
+    shell:
+        """
+        {T[plink2]} --bfile {P[thousand_genomes_eur_plink_prefix]} \
+          --clump {input} \
+          --clump-p1 {PM[clump_p1]} --clump-r2 {PM[clump_r2]} --clump-kb {PM[clump_kb]} \
+          --clump-id-field MarkerName --clump-p-field P-value \
+          --out {O[clump_dir]}clumped
+        mv {O[clump_dir]}clumped.clumped {output}
+        """
+
+rule match_to_cohort:
+    input:
+        clumped=O["clump_dir"] + "clumped.tsv",
+        dbsnp=P["dbsnp_b151_vcf_gz"],
+        pvar=P["cohort_pfile_prefix"] + ".pvar"
+    output: O["matched_dir"] + "matched.tsv"
+    shell:
+        """
+        bash scripts/20_match/extract_snps_from_vcf.sh {input.dbsnp} {input.clumped} {O[matched_dir]}extracted.vcf
+        bash scripts/20_match/match_dbsnp_with_cohort.sh {O[matched_dir]}extracted.vcf {input.pvar} {output}
+        """
+
+rule build_scores:
+    input:
+        matched=O["matched_dir"] + "matched.tsv",
+        sumstats=P["meta_sumstats_union"]
+    output: O["scores_dir"] + "global.score"
+    shell:
+        """
+        {T[rscript]} scripts/30_scores/get_score.R \
+          --matched {input.matched} --sumstats {input.sumstats} --out {output} \
+          --exclude-apoe {F[exclude_apoe_in_prs]}
+        """
+
+rule clusters:
+    input:
+        snpx=P["snpxplorer_annotations"],
+        gprof=P["gprofiler_intersections"]
+    output: O["clusters_dir"] + "snp_weighted_mapping_noAPOE_4clust.csv"
+    shell:
+        """
+        {T[python]} scripts/40_pathways/Alternative_REVIGO.py \
+          {P[go_terms_bp_all]} {O[clusters_dir]}revigo_lin_distance.txt
+        {T[rscript]} scripts/40_pathways/ClusterCreation.R \
+          --snpx {input.snpx} --gprof {input.gprof} \
+          --revigo {O[clusters_dir]}revigo_lin_distance.txt \
+          --p {PM[go_p_adj_threshold_strict]} --k {PM[n_clusters_final]} \
+          --out {output}
+        """
+
+rule annotate_scores_with_clusters:
+    input:
+        score=O["scores_dir"] + "global.score",
+        weights=O["clusters_dir"] + "snp_weighted_mapping_noAPOE_4clust.csv"
+    output: O["scores_dir"] + "weighted_4clust.score"
+    shell:
+        """
+        {T[rscript]} scripts/30_scores/build_plink_scores.R \
+          --score {input.score} --weights {input.weights} --out {output}
+        """
+
+rule plink_score_global:
+    input:
+        score=O["scores_dir"] + "weighted_4clust.score",
+        pfile_prefix=P["cohort_pfile_prefix"]
+    output: O["plink_out_dir"] + "global_noAPOE.sscore"
+    shell:
+        """
+        {T[plink2]} --pfile {input.pfile_prefix} \
+          --score {input.score} 1 2 3 cols=+scoresums,+scoreavgs list-variants header \
+          --out {O[plink_out_dir]}global_noAPOE
+        """
+
+rule qc_and_viz:
+    input: O["plink_out_dir"] + "global_noAPOE.sscore"
+    output: O["figures_dir"] + "prs_histograms.png"
+    shell:
+        """
+        {T[rscript]} scripts/60_qc_and_viz/ADNI_PLINK_input_output.R \
+          --sscore {input} --outdir {O[figures_dir]}
+        """

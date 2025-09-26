@@ -1,0 +1,9 @@
+flowchart TD
+  A[Union meta-GWAS] --> B[PLINK2 clump]
+  B --> C[dbSNP match to cohort]
+  C --> D[Score construction]
+  D --> E[SNP→gene & g:Profiler]
+  E --> F[REVIGO Lin similarity]
+  F --> G[Dynamic clustering (k=4)]
+  G --> H[Weighted PLINK scores]
+  H --> I[QC & viz]

@@ -1,0 +1,8 @@
+cff-version: 1.2.0
+title: "Pathway-specific PRS pipeline"
+message: "If you use this repository, please cite it as below."
+authors:
+  - family-names: Canelas
+    given-names: Carolina Isabel Valentim
+date-released: 2025-09-26
+license: MIT
